@@ -1,3 +1,4 @@
+
 # MindIt Hybrid Notes Maker
 
 MindIt is a hybrid note-making app that turns raw text into a structured, grounded note. Instead of treating the input as one big blob of text, it breaks the note into meaningful parts, measures how those parts relate to each other, groups the related pieces into topics, and then builds a final note from the strongest retrieved passages.
@@ -230,3 +231,6 @@ Start with these files:
 - `client/src/AppHybrid.jsx` for the rendered result layout
 
 If you want to understand the app quickly, trace the flow from raw text input to chunking, then to embeddings, then to topic clusters, and finally to the nested RAG output.
+=======
+# MindIt!
+

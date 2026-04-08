@@ -1,1 +1,1 @@
-# MindIt-
+# MindIt!

@@ -319,6 +319,7 @@ function pushChunkSpec(specs, seen, kind, text, heading = '') {
 }
 
 function splitIntoSemanticChunks(inputText) {
+  // Preserve headings, bullets, and paragraphs so downstream topic grouping stays meaningful.
   const normalized = inputText.replace(/\r\n/g, '\n').trim()
 
   if (!normalized) {
@@ -492,6 +493,7 @@ function computeIdfMap(chunks) {
 }
 
 function buildEmbedding(text, idfMap) {
+  // Local hashed-IDF embeddings keep similarity calculations deterministic and lightweight.
   const vector = Array(EMBEDDING_DIMENSION).fill(0)
   const tokens = tokenize(text)
 
@@ -617,121 +619,122 @@ function selectSources(rankedChunks, limit = SOURCE_LIMIT) {
   return selected
 }
 
-function buildSummaryParagraph(selectedSources, scopeLabel, focusTerms) {
-  const focusText = focusTerms.length > 0 ? formatTermList(focusTerms.slice(0, 4)) : 'the strongest source ideas'
-  const sentences = []
+function getSelectedSourceLabel(source) {
+  const sourceText = source?.passage || source?.chunk
 
-  if (scopeLabel === 'hybrid note') {
-    sentences.push('This hybrid note starts with semantic chunking, groups related passages into topic clusters, and rewrites the strongest evidence through RAG.')
-    sentences.push('Each topic cluster also gets a local RAG pass so the final note stays grounded at both the document and cluster levels.')
-  } else if (scopeLabel === 'topic cluster') {
-    sentences.push('This topic cluster stays grounded in the strongest local passages before the rewrite.')
-  } else {
-    sentences.push('This note stays grounded in the strongest retrieved passages.')
+  if (!sourceText) {
+    return ''
   }
 
-  sentences.push(`The focus stays on ${focusText}.`)
+  const label = normalizeWhitespace(sourceText.heading || sourceText.label || '')
+
+  if (label) {
+    return label
+  }
+
+  return toCompactSnippet(stripIntroLabel(stripLeadingLabel(sourceText.text, sourceText.heading || sourceText.label)), 5)
+}
+
+function buildSourceFocusText(selectedSources) {
+  const labels = dedupePreserveOrder(
+    selectedSources
+      .slice(0, SOURCE_LIMIT)
+      .map((source) => getSelectedSourceLabel(source))
+      .filter(Boolean),
+  )
+
+  if (labels.length === 0) {
+    return 'the strongest retrieved passages'
+  }
+
+  return formatTermList(labels)
+}
+
+function buildSummaryParagraph(selectedSources, scopeLabel) {
+  if (scopeLabel === 'topic cluster') {
+    const primarySource = selectedSources[0]
+    const sourceText = primarySource?.chunk || primarySource?.passage
+
+    if (!sourceText) {
+      return 'No source passages were retrieved.'
+    }
+
+    return clipText(stripIntroLabel(stripLeadingLabel(sourceText.text, sourceText.heading || sourceText.label)), 18)
+  }
+
+  const focusText = buildSourceFocusText(selectedSources)
+
+  if (focusText === 'the strongest retrieved passages') {
+    return 'This note stays grounded in the strongest retrieved passages.'
+  }
+
+  return `This note stays grounded in the strongest retrieved passages and keeps the focus on ${focusText}.`
+}
+
+function buildTakeawayLines(selectedSources) {
+  const labels = selectedSources
+    .slice(0, SOURCE_LIMIT)
+    .map((source) => getSelectedSourceLabel(source))
+    .filter(Boolean)
+
+  const takeaways = []
+
+  if (labels[0]) {
+    takeaways.push(`Lead with ${labels[0]}.`)
+  }
+
+  if (labels[1]) {
+    takeaways.push(`Use ${labels[1]} as support.`)
+  }
+
+  if (labels[2]) {
+    takeaways.push(`Keep ${labels[2]} tied to the source text.`)
+  } else if (labels.length > 0) {
+    takeaways.push('Keep the final note tied to the source text.')
+  }
+
+  if (takeaways.length === 0) {
+    takeaways.push('Keep the final note tied to the source text.')
+  }
+
+  return dedupePreserveOrder(takeaways).slice(0, 3)
+}
+
+function buildDraftLines(selectedSources) {
+  const lines = []
 
   if (selectedSources[0]) {
-    sentences.push('The first passage establishes the retrieval direction.')
+    lines.push(`Core: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[0].chunk.text, selectedSources[0].chunk.heading || selectedSources[0].chunk.label)), 18)}`)
   }
 
   if (selectedSources[1]) {
-    sentences.push('The second passage keeps the note tied to the same idea.')
+    lines.push(`Support: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[1].chunk.text, selectedSources[1].chunk.heading || selectedSources[1].chunk.label)), 18)}`)
   }
 
-  if (selectedSources.length > 2) {
-    sentences.push('The remaining passages add supporting evidence from the source text.')
+  if (selectedSources[2]) {
+    lines.push(`Evidence: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[2].chunk.text, selectedSources[2].chunk.heading || selectedSources[2].chunk.label)), 18)}`)
   }
 
-  return normalizeWhitespace(sentences.join(' '))
-}
-
-function buildTakeawayLines(selectedSources, focusTerms, scopeLabel) {
-  const takeaways = []
-
-  if (scopeLabel === 'hybrid note') {
-    takeaways.push('Chunk the source first so related ideas stay isolated.')
-    takeaways.push('Group the chunks into topics before writing the final note.')
-    takeaways.push('Use embedding similarity to choose the strongest evidence.')
-    takeaways.push('Run RAG at both the document level and the topic level.')
-  } else {
-    takeaways.push('Keep the local RAG pass centered on the strongest retrieved chunk.')
-    takeaways.push('Avoid blending unrelated passages into the same sub-note.')
-    takeaways.push('Use the cluster keywords to keep the rewrite on topic.')
-  }
-
-  if (focusTerms.length > 0) {
-    takeaways.push(`Stay focused on ${formatTermList(focusTerms.slice(0, 4))}.`)
-  }
-
-  if (selectedSources.length > 0) {
-    takeaways.push('Let the first source passage act as the opening anchor.')
-  }
-
-  return dedupePreserveOrder(takeaways).slice(0, 4)
-}
-
-function buildDraftLines(selectedSources, focusTerms, scopeLabel) {
-  const lines = []
-
-  if (scopeLabel === 'hybrid note') {
-    if (selectedSources[0]) {
-      lines.push(`Semantic chunking: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[0].chunk.text, selectedSources[0].chunk.heading || selectedSources[0].chunk.label)), 18)}`)
-    }
-
-    if (selectedSources[1]) {
-      lines.push(`Topic modeling: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[1].chunk.text, selectedSources[1].chunk.heading || selectedSources[1].chunk.label)), 18)}`)
-    }
-
-    if (selectedSources[2]) {
-      lines.push(`Embedding anchor: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[2].chunk.text, selectedSources[2].chunk.heading || selectedSources[2].chunk.label)), 18)}`)
-    }
-
-    if (selectedSources[3]) {
-      lines.push(`RAG rewrite: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[3].chunk.text, selectedSources[3].chunk.heading || selectedSources[3].chunk.label)), 18)}`)
-    }
-  } else {
-    if (selectedSources[0]) {
-      lines.push(`Core note: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[0].chunk.text, selectedSources[0].chunk.heading || selectedSources[0].chunk.label)), 18)}`)
-    }
-
-    if (selectedSources[1]) {
-      lines.push(`Supporting detail: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[1].chunk.text, selectedSources[1].chunk.heading || selectedSources[1].chunk.label)), 18)}`)
-    }
-
-    if (selectedSources[2]) {
-      lines.push(`Additional evidence: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[2].chunk.text, selectedSources[2].chunk.heading || selectedSources[2].chunk.label)), 18)}`)
-    }
-  }
-
-  if (focusTerms.length > 0) {
-    lines.push(`Focus terms: ${focusTerms.slice(0, 4).join(', ')}`)
+  if (selectedSources[3]) {
+    lines.push(`More: ${clipText(stripIntroLabel(stripLeadingLabel(selectedSources[3].chunk.text, selectedSources[3].chunk.heading || selectedSources[3].chunk.label)), 18)}`)
   }
 
   return dedupePreserveOrder(lines).slice(0, 4)
 }
 
-function buildFollowUps(selectedSources, focusTerms, scopeLabel) {
+function buildFollowUps(selectedSources) {
   const followUps = []
 
-  if (scopeLabel === 'hybrid note') {
-    followUps.push('Should any semantic chunk be split more tightly before rewriting?')
-    followUps.push('Which topic cluster should get the strongest local RAG pass?')
-  } else {
-    followUps.push('Should this cluster pull in another semantic chunk?')
-    followUps.push('Which passage should become the opening sentence?')
+  if (selectedSources.length < SOURCE_LIMIT) {
+    followUps.push('Should one more source passage be added?')
   }
 
-  if (focusTerms.length > 0) {
-    followUps.push(`What extra detail should be captured about ${focusTerms[0]}?`)
+  if (selectedSources[0]) {
+    const primaryLabel = getSelectedSourceLabel(selectedSources[0])
+    followUps.push(primaryLabel ? `Should ${primaryLabel} become the main takeaway?` : 'Should the main takeaway be rewritten more tightly?')
   }
 
-  if (selectedSources.length > 0) {
-    followUps.push('Which source passage should become the closing takeaway?')
-  }
-
-  return dedupePreserveOrder(followUps).slice(0, 3)
+  return dedupePreserveOrder(followUps).slice(0, 2)
 }
 
 function buildHybridTitle(chunks, scopeLabel) {
@@ -755,6 +758,7 @@ function buildHybridTitle(chunks, scopeLabel) {
 }
 
 function buildRagPack(chunks, options = {}) {
+  // Run a scoped retrieval pass over either the whole note or one topic cluster.
   const {
     title,
     scopeLabel = 'hybrid note',
@@ -800,10 +804,10 @@ function buildRagPack(chunks, options = {}) {
 
   return {
     title: title || buildHybridTitle(localChunks, scopeLabel),
-    overview: `Retrieved ${selectedSources.length} source passage${selectedSources.length === 1 ? '' : 's'} from ${localChunks.length} semantic chunk${localChunks.length === 1 ? '' : 's'} for ${scopeLabel}.`,
-    summary: buildSummaryParagraph(selectedSources, scopeLabel, queryTerms),
-    takeaways: buildTakeawayLines(selectedSources, queryTerms, scopeLabel),
-    draft: buildDraftLines(selectedSources, queryTerms, scopeLabel),
+    overview: `Retrieved ${selectedSources.length} passage${selectedSources.length === 1 ? '' : 's'} from ${localChunks.length} chunk${localChunks.length === 1 ? '' : 's'}.`,
+    summary: buildSummaryParagraph(selectedSources, scopeLabel),
+    takeaways: buildTakeawayLines(selectedSources),
+    draft: buildDraftLines(selectedSources),
     sources: selectedSources.map(({ chunk, score }) => ({
       id: chunk.id,
       kind: chunk.kind,
@@ -811,7 +815,7 @@ function buildRagPack(chunks, options = {}) {
       score: Number(score.toFixed(3)),
       excerpt: clipText(stripIntroLabel(stripLeadingLabel(chunk.text, chunk.heading || chunk.label)), 20),
     })),
-    followUps: buildFollowUps(selectedSources, queryTerms, scopeLabel),
+    followUps: buildFollowUps(selectedSources),
     queryTerms,
     queryText,
     queryEmbedding,
@@ -842,6 +846,7 @@ function buildTopicSummary(cluster, keywords) {
 }
 
 function clusterTopics(chunks) {
+  // Cluster by embedding similarity plus shared keywords so related ideas stay together.
   const clusters = []
 
   for (const chunk of chunks) {
@@ -1014,6 +1019,7 @@ function emptyResult() {
 }
 
 function processNotes(inputText) {
+  // Assemble the full response contract that the UI renders.
   const chunks = splitIntoSemanticChunks(inputText)
 
   if (chunks.length === 0) {

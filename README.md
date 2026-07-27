@@ -1,232 +1,110 @@
-# MindIt Hybrid Notes Maker
+# MindIt!
 
-MindIt is a hybrid note-making app that turns raw text into a structured, grounded note. Instead of treating the input as one big blob of text, it breaks the note into meaningful parts, measures how those parts relate to each other, groups the related pieces into topics, and then builds a final note from the strongest retrieved passages.
+MindIt! is a web application that transforms raw documents (PDFs, DOCX, etc.) into structured, easy-to-read notes. Users upload their study or work materials, and the system processes them using AI to generate organized summaries, key points, and structured notes.
 
-The result is a note that feels organized and explainable. You can see the chunks, the topic clusters, the retrieved sources, and the final grounded draft all in one place.
+## Features
 
-## What this project does
+- **Document Upload** – Securely upload documents (PDF, DOCX, TXT, etc.) with support for large files via object storage.
+- **AI-Powered Note Generation** – Automatically extract key concepts, headings, and summaries from uploaded documents using LLMs.
+- **Structured Notes** – View and manage clean, well-organized notes generated from your documents.
+- **User Authentication** – Secure sign-up, login, and account management with JWT-based authentication.
+- **Document Management** – Organize, search, and access your documents and notes in one place.
+- **Responsive UI** – Modern, fast, and mobile-friendly interface built with React, Tailwind CSS, and Framer Motion.
 
-MindIt is built as a local client/server app:
+## Tech Stack
 
-- The server receives note text and runs the hybrid note pipeline.
-- The client renders the results as a compact dashboard.
-- The pipeline is deterministic and local. It does not depend on an external LLM call.
+### Frontend
+- **React** – Component-based UI library for building interactive interfaces.
+- **Tailwind CSS** – Utility-first CSS framework for rapid, consistent styling.
+- **Framer Motion** – Animation library for smooth transitions and micro-interactions.
 
-The app combines four ideas that are often used separately:
+### Backend
+- **FastAPI** – High-performance Python web framework for building the REST API.
+- **PostgreSQL** – Relational database for storing users, documents, notes, and metadata.
+- **SQLAlchemy / SQLModel** – ORM for clean, type-safe database interactions.
+- **Pydantic** – Data validation and settings management using Python type hints.
+- **S3-Compatible Object Storage** – Scalable storage for uploaded documents (e.g., AWS S3, Cloudflare R2).
 
-1. Semantic chunking
-2. Embeddings
-3. Topic modeling
-4. RAG, or Retrieval-Augmented Generation
+### AI & Processing
+- **LLM Integration** – Integration with hosted LLM APIs (e.g., OpenAI, Anthropic) for text summarization and structuring.
+- **Document Parsing** – Libraries for extracting text and structure from PDFs, DOCX, and other formats.
+- **Background Workers** – Asynchronous processing pipeline for document parsing and note generation.
 
-Used together, they create a hybrid notes maker that can split, relate, group, retrieve, and rewrite source text in a way that stays close to the original material.
+## Architecture Overview
 
-## Core concepts
+MindIt! follows a modular, layered architecture:
 
-| Concept | What it means | Role in MindIt |
-| --- | --- | --- |
-| Semantic chunking | Splitting text into meaningful passages instead of arbitrary fixed-length blocks | Creates the units that the rest of the pipeline works with |
-| Embeddings | Turning text into numeric vectors that capture similarity | Lets the app compare chunks and score related passages |
-| Topic modeling | Grouping chunks that share similar ideas, keywords, or vector patterns | Organizes the note into topic clusters |
-| RAG | Retrieving the most relevant source passages and using them to write a grounded draft | Produces the final note and the nested topic-level notes |
+- **API Layer (FastAPI Routers)** – Handles HTTP requests, authentication, and request/response validation.
+- **Business Logic Layer (Services)** – Contains core application logic, including document processing and LLM integration.
+- **Data Access Layer (Repositories)** – Manages database queries and interactions with PostgreSQL.
+- **Core Module** – Configuration, database connection, security utilities, and logging.
+- **Workers** – Background processes for heavy tasks like document parsing and AI inference.
 
-### Semantic chunking
+This separation ensures maintainability, testability, and scalability as the project grows.
 
-Semantic chunking is the first step. The input note is split into smaller pieces that still make sense on their own. In MindIt, this usually means:
-
-- Heading lines become their own section context.
-- Bullet points stay together as individual ideas.
-- Long paragraphs are broken into smaller sentence groups.
-
-This matters because the rest of the system works better on focused passages than on one long, mixed document. A smaller chunk is easier to score, easier to cluster, and easier to retrieve later.
-
-### Embeddings
-
-Embeddings are vector representations of text. Two passages with similar meaning should end up with vectors that are close together.
-
-In this project, the embeddings are generated locally with a lightweight hashed-IDF approach. That keeps the app fast and dependency-light while still giving the pipeline a meaningful similarity signal.
-
-MindIt uses embeddings to answer questions like:
-
-- Which chunks are most similar to the overall note?
-- Which chunks belong together?
-- Which passage should be treated as the best source for a draft?
-
-### Topic modeling
-
-Topic modeling is the step where related chunks are grouped together into clusters.
-
-In many research systems, topic modeling can mean statistical methods such as LDA. In MindIt, the idea is simpler and more practical: use the similarity signals from the embeddings and the repeated keywords in the chunks to cluster related ideas together.
-
-That gives you a topic map of the note. Each topic cluster becomes a smaller, focused region of the document, which can then receive its own nested retrieval pass.
-
-### RAG
-
-RAG stands for Retrieval-Augmented Generation.
-
-The idea is:
-
-1. Retrieve the most relevant source passages.
-2. Use those passages as the basis for a grounded draft.
-
-This prevents the note from becoming too generic or drifting away from the original input. Instead of inventing new content, the system prefers to rewrite from the strongest retrieved evidence.
-
-In MindIt, RAG happens twice:
-
-- A document-wide RAG pass builds the main hybrid note.
-- Each topic cluster also gets a smaller nested RAG pass.
-
-That is why the app is described as a hybrid notes maker and sometimes as RAG inside RAG.
-
-## How the hybrid pipeline works
-
-The pipeline is easiest to understand as a sequence:
-
-```mermaid
-flowchart LR
-	A[Raw note input] --> B[Semantic chunking]
-	B --> C[Embedding generation]
-	C --> D[Topic modeling / clustering]
-	C --> E[Retrieval ranking]
-	D --> F[Nested RAG per topic]
-	E --> G[Top-level RAG note]
-	F --> G
-	G --> H[Hybrid note output]
-```
-
-### Step by step
-
-1. The user pastes raw notes into the input box.
-2. The backend splits the text into semantic chunks.
-3. Each chunk gets a local embedding.
-4. Similar chunks are grouped into topic clusters.
-5. The app ranks the chunks by similarity and relevance.
-6. The top passages become the grounding sources for the main RAG note.
-7. Each topic cluster also gets its own local RAG summary, draft lines, and sources.
-8. The frontend renders the whole result as a compact dashboard.
-
-The important part is that these steps work together. Semantic chunking gives the system structure, embeddings give it relatedness, topic modeling gives it organization, and RAG turns the result into readable notes.
-
-## Why the hybrid approach helps
-
-A simple summary can miss detail. A pure keyword search can miss meaning. A large monolithic note can hide useful context.
-
-The hybrid approach solves that by combining the strengths of each technique:
-
-- Chunking keeps the source text manageable.
-- Embeddings help the app understand which pieces are semantically close.
-- Topic modeling groups related ideas so the note has a clear shape.
-- RAG keeps the final output grounded in the original text.
-
-That makes the output easier to trust because the source passages are visible and the final note is built from them.
-
-## What the UI shows
-
-The frontend is designed as a compact dashboard. It shows:
-
-- Pipeline metrics for the full run
-- Topic cluster cards
-- Nested RAG summaries inside each topic
-- The final hybrid RAG note
-- Grounding sources used to support the draft
-- Follow-up prompts that suggest what to refine next
-
-This makes the app feel like a note intelligence workspace rather than a plain text summarizer.
-
-## Project structure
-
-```text
-README.md
-client/
-	src/
-		AppHybrid.jsx
-		main.jsx
-		index.css
-	package.json
-server/
-	src/
-		index.js
-		noteIntelligence.js
-		textProcessor.js
-	package.json
-```
-
-- `server/src/index.js` exposes the API.
-- `server/src/noteIntelligence.js` contains the hybrid note pipeline.
-- `client/src/AppHybrid.jsx` renders the dashboard.
-- `client/vite.config.js` proxies API requests to the local server.
-
-## API
-
-The main endpoint is:
-
-```http
-POST /api/process
-```
-
-Request body:
-
-```json
-{
-	"text": "Your raw note text here"
-}
-```
-
-The response includes structured data for the UI, including:
-
-- `pipeline`
-- `semantic`
-- `topics`
-- `embeddings`
-- `rag`
-
-There is also a lightweight health endpoint:
-
-```http
-GET /api/health
-```
-
-## Local setup
+## Getting Started
 
 ### Prerequisites
 
-- Node.js 20 or newer is recommended.
-- npm is used for both the client and server packages.
+- Python 3.10+
+- Node.js 18+ and npm/yarn
+- PostgreSQL 14+
+- S3-compatible storage credentials (e.g., AWS S3, Cloudflare R2)
+- LLM API key (e.g., OpenAI, Anthropic)
 
-### Install and run the server
+### Backend Setup
 
-```bash
-cd server
-npm install
-npm run dev
-```
+1. Clone the repository and navigate to the backend directory.
+2. Create a virtual environment and install dependencies:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+3. Configure environment variables (`.env`):
+   - Database URL
+   - S3/R2 credentials and bucket name
+   - LLM API key
+   - JWT secret and other security settings
+4. Initialize the database and run migrations.
+5. Start the FastAPI server:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-The server runs on port `4000` by default.
+### Frontend Setup
 
-### Install and run the client
+1. Navigate to the frontend directory.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure environment variables for API endpoints.
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-```bash
-cd client
-npm install
-npm run dev
-```
+5. Open your browser and visit the local development URL.
 
-The Vite dev server proxies `/api` requests to the backend so the frontend can talk to the local processor without extra configuration.
+## Project Status
 
-## Implementation notes
+MindIt! is currently in active development. Core features including authentication, document upload, and AI-powered note generation are being implemented.
 
-- The note pipeline is local and deterministic.
-- The embedding model is lightweight and hashed rather than using a remote embedding API.
-- The topic modeling step is heuristic clustering, not a full academic LDA implementation.
-- The final note is grounded in retrieved source passages so the output stays close to the input.
-- No persistent storage is used for note content in the current app flow.
+## Contributing
 
-## If you are exploring the code
+Contributions are welcome! Please follow these steps:
 
-Start with these files:
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/your-feature`).
+3. Commit your changes (`git commit -m 'Add some feature'`).
+4. Push to the branch (`git push origin feature/your-feature`).
+5. Open a Pull Request.
 
-- `server/src/index.js` for the API surface
-- `server/src/noteIntelligence.js` for the hybrid processing logic
-- `client/src/AppHybrid.jsx` for the rendered result layout
+## License
 
-If you want to understand the app quickly, trace the flow from raw text input to chunking, then to embeddings, then to topic clusters, and finally to the nested RAG output.
+This project is licensed under the MIT License.
+
+## Contact
+
+For questions or feedback, please reach out via the repository's issue tracker or contact the maintainer directly.

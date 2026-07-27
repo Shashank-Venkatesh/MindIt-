@@ -357,6 +357,7 @@ function computeIdfMap(passages) {
 }
 
 function buildEmbedding(text, idfMap) {
+  // Hashed-IDF embeddings give each passage a local similarity vector without external APIs.
   const vector = Array(EMBEDDING_DIMENSION).fill(0)
   const tokens = tokenize(text)
 
@@ -392,6 +393,7 @@ function buildEmbedding(text, idfMap) {
 }
 
 function buildPassages(inputText) {
+  // Keep headings, bullets, and long blocks intact so retrieval works on meaningful passages.
   const passageTexts = splitIntoPassageTexts(inputText)
 
   return passageTexts.map((text, index) => ({
@@ -433,6 +435,7 @@ function getTopTokens(frequencyMap, limit = 6) {
 }
 
 function buildRetrievalQuery(passages, frequencyMap) {
+  // Use the heading plus frequent terms to form the retrieval query for ranking.
   const headingCandidate = passages.find((passage) => passage.isHeading)
   const topTokens = getTopTokens(frequencyMap, 6)
 
@@ -539,6 +542,7 @@ function lexicalOverlapScore(leftTokens, rightTokens) {
 }
 
 function selectSources(rankedPassages, limit = SOURCE_LIMIT) {
+  // Prefer diverse evidence so the final draft does not repeat the same passage shape.
   const selected = []
 
   for (const candidate of rankedPassages) {
@@ -666,6 +670,7 @@ function toCompactSnippet(text, maxWords = 14) {
 }
 
 function processNotes(inputText) {
+  // Orchestrate the full pass from raw text to grounded RAG response.
   const passages = buildPassages(inputText)
 
   if (passages.length === 0) {

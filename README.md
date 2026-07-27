@@ -107,4 +107,9 @@ This project is licensed under the MIT License.
 
 ## Contact
 
+
 For questions or feedback, please reach out via the repository's issue tracker or contact the maintainer directly.
+=======
+If you want to understand the app quickly, trace the flow from raw text input to chunking, then to embeddings, then to topic clusters, and finally to the nested RAG output.
+=======
+# MindIt!

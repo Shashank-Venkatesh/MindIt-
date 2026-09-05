@@ -2,6 +2,19 @@ export function normalizeWhitespace(text) {
   return text.replace(/\s+/g, ' ').trim()
 }
 
+// Common words ignored when comparing paragraphs for paraphrase detection.
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her',
+  'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how',
+  'its', 'let', 'may', 'own', 'too', 'use', 'who', 'why', 'this', 'that',
+  'with', 'from', 'your', 'have', 'more', 'will', 'they', 'them', 'were',
+  'been', 'their', 'what', 'when', 'which', 'would', 'there', 'these',
+  'those', 'into', 'than', 'then', 'also', 'should', 'some', 'such', 'very',
+  'about', 'after', 'before', 'between', 'both', 'each', 'other', 'over',
+  'under', 'most', 'only', 'any', 'all', 'note', 'notes', 'source', 'sources',
+  'passage', 'passages', 'cluster', 'clusters', 'topic', 'topics',
+])
+
 export function pluralizeCount(count, label) {
   return `${count} ${label}${count === 1 ? '' : 's'}`
 }
@@ -38,6 +51,16 @@ export function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+export function formatTimestamp(ms) {
+  const date = new Date(ms)
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 export function buildStudyNotesModel(result) {
   const semanticChunks = result?.semantic?.chunks || []
   const topicClusters = result?.topics?.clusters || []
@@ -49,12 +72,60 @@ export function buildStudyNotesModel(result) {
 
   const sections = []
   const seen = new Set()
+  // Track normalized paragraph text already shown so paraphrased lines that
+  // repeat the same idea (same meaning, different wording) are omitted from
+  // the summary once they have been covered by an earlier section.
+  const seenParagraphs = new Set()
+
+  // Lightweight token set used to catch near-duplicate paragraphs: two
+  // paragraphs are treated as paraphrases when they share most of their
+  // meaningful tokens, even if the wording differs.
+  const tokenSet = (text) => {
+    const tokens = (text.toLowerCase().match(/[a-z0-9]{3,}/g) || []).filter(
+      (t) => !STOP_WORDS.has(t)
+    )
+    return new Set(tokens)
+  }
+
+  const isParaphrase = (text) => {
+    const key = normalizeWhitespace(text || '').toLowerCase()
+    if (!key) {
+      return true
+    }
+    if (seenParagraphs.has(key)) {
+      return true
+    }
+    const tokens = tokenSet(text)
+    if (tokens.size === 0) {
+      return false
+    }
+    for (const prev of seenParagraphs) {
+      const prevTokens = tokenSet(prev)
+      if (prevTokens.size === 0) {
+        continue
+      }
+      const overlap = [...tokens].filter((t) => prevTokens.has(t)).length
+      const ratio = overlap / Math.min(tokens.size, prevTokens.size)
+      if (ratio >= 0.8) {
+        return true
+      }
+    }
+    return false
+  }
 
   const addSection = (title, paragraphs) => {
     const cleanTitle = normalizeWhitespace(title || '')
     const cleanParagraphs = paragraphs
       .map((paragraph) => normalizeWhitespace(paragraph || ''))
       .filter(Boolean)
+      // Omit paraphrased paragraphs that repeat an idea already covered.
+      .filter((paragraph) => {
+        if (isParaphrase(paragraph)) {
+          return false
+        }
+        seenParagraphs.add(paragraph.toLowerCase())
+        return true
+      })
 
     if (cleanParagraphs.length === 0) {
       return

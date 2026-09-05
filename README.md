@@ -21,6 +21,7 @@ MindIt! is a web application that transforms raw documents (PDFs, DOCX, etc.) in
 ### Backend
 - **FastAPI** – High-performance Python web framework for building the REST API.
 - **PostgreSQL** – Relational database for storing users, documents, notes, and metadata.
+- **pgvector** – Postgres extension for vector similarity search, used to suggest links between mind-map headings across notes.
 - **SQLAlchemy / SQLModel** – ORM for clean, type-safe database interactions.
 - **Pydantic** – Data validation and settings management using Python type hints.
 - **S3-Compatible Object Storage** – Scalable storage for uploaded documents (e.g., AWS S3, Cloudflare R2).

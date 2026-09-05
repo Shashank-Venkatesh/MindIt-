@@ -1,13 +1,16 @@
-// Local history store.
+// Note history store.
 //
-// This is a placeholder persistence layer. It keeps generated runs in the
-// browser's localStorage so the Dashboard has something real to show and
-// interact with. Once the FastAPI backend is ready, swap these functions
-// out for API calls (e.g. GET/POST/DELETE /api/history) — the shape of the
-// entries below is designed to map directly onto that future API.
+// Guests (signed out) keep their runs in localStorage, namespaced by
+// GUEST_OWNER, exactly as before — there's no account to attach them to.
+// Signed-in users get real persistence via the FastAPI backend's
+// /api/notes endpoints (backed by Postgres via Supabase), so their history
+// follows them across devices/browsers.
+
+import { apiGet, apiPost, apiDelete } from './api'
 
 const STORAGE_KEY = 'mindit.history.v1'
-const MAX_ENTRIES = 50
+const MAX_ENTRIES_PER_OWNER = 50
+export const GUEST_OWNER = 'guest'
 
 function readRaw() {
   try {
@@ -28,34 +31,86 @@ function writeRaw(entries) {
   }
 }
 
-export function getHistory() {
-  return readRaw().sort((a, b) => b.createdAt - a.createdAt)
+function sortByCreatedDesc(entries) {
+  return [...entries].sort((a, b) => b.createdAt - a.createdAt)
 }
 
-export function addHistoryEntry({ text, result }) {
-  const entries = readRaw()
+function sortByViewedDesc(entries) {
+  return [...entries].sort((a, b) => (b.viewedAt ?? b.createdAt) - (a.viewedAt ?? a.createdAt))
+}
 
+export async function getHistory(owner = GUEST_OWNER, isAuthenticated = false) {
+  if (isAuthenticated) {
+    const notes = await apiGet('/api/notes')
+    return sortByCreatedDesc(notes || [])
+  }
+  return sortByCreatedDesc(readRaw().filter((entry) => entry.owner === owner))
+}
+
+export async function getRecentlyViewed(owner = GUEST_OWNER, isAuthenticated = false, limit = 5) {
+  const entries = await getHistory(owner, isAuthenticated)
+  return sortByViewedDesc(entries).slice(0, limit)
+}
+
+export async function touchHistoryEntry(id, isAuthenticated = false) {
+  if (isAuthenticated) {
+    // GET /api/notes/{id} touches viewedAt server-side as a side effect.
+    try {
+      await apiGet(`/api/notes/${id}`)
+    } catch {
+      // Non-fatal — the entry may already be gone.
+    }
+    return
+  }
+
+  const entries = readRaw()
+  const next = entries.map((entry) => (entry.id === id ? { ...entry, viewedAt: Date.now() } : entry))
+  writeRaw(next)
+}
+
+export async function addHistoryEntry({ owner = GUEST_OWNER, text, result, isAuthenticated = false }) {
   const trimmedText = text.trim()
   const preview = trimmedText.length > 140 ? `${trimmedText.slice(0, 140)}…` : trimmedText
 
+  if (isAuthenticated) {
+    return apiPost('/api/notes', { preview, text, result })
+  }
+
+  const now = Date.now()
+  const entries = readRaw()
+
   const entry = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    createdAt: Date.now(),
+    id: `${now}-${Math.random().toString(36).slice(2, 8)}`,
+    owner,
+    createdAt: now,
+    viewedAt: now,
     preview,
     text,
     result,
   }
 
-  const next = [entry, ...entries].slice(0, MAX_ENTRIES)
-  writeRaw(next)
+  const ownersEntries = entries.filter((e) => e.owner === owner)
+  const otherEntries = entries.filter((e) => e.owner !== owner)
+  const trimmedOwnerEntries = [entry, ...ownersEntries].slice(0, MAX_ENTRIES_PER_OWNER)
+
+  writeRaw([...otherEntries, ...trimmedOwnerEntries])
   return entry
 }
 
-export function removeHistoryEntry(id) {
+export async function removeHistoryEntry(id, isAuthenticated = false) {
+  if (isAuthenticated) {
+    await apiDelete(`/api/notes/${id}`)
+    return
+  }
   const next = readRaw().filter((entry) => entry.id !== id)
   writeRaw(next)
 }
 
-export function clearHistory() {
-  writeRaw([])
+export async function clearHistory(owner = GUEST_OWNER, isAuthenticated = false) {
+  if (isAuthenticated) {
+    await apiDelete('/api/notes/clear/all')
+    return
+  }
+  const next = readRaw().filter((entry) => entry.owner !== owner)
+  writeRaw(next)
 }

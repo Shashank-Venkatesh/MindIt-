@@ -60,11 +60,11 @@ export function FileDropzone({ fileMeta, onFile, onRemove }) {
       >
         <Icon name="upload_file" className="text-[24px] text-on-surface-variant" />
         <p className="text-sm font-medium text-on-surface">Drag &amp; drop a file, or click to browse</p>
-        <p className="text-xs text-on-surface-variant">Supports .txt and .md files</p>
+        <p className="text-xs text-on-surface-variant">Supports .txt, .md, and .pdf files</p>
         <input
           ref={inputRef}
           type="file"
-          accept=".txt,.md,.markdown"
+          accept=".txt,.md,.markdown,.pdf"
           hidden
           onChange={(event) => handleFiles(event.target.files)}
         />
@@ -80,7 +80,7 @@ export function FileDropzone({ fileMeta, onFile, onRemove }) {
                 {formatBytes(fileMeta.size)}
                 {fileMeta.status === 'reading' ? ' · Reading…' : ''}
                 {fileMeta.status === 'ready' ? ' · Loaded' : ''}
-                {fileMeta.status === 'unsupported' ? ' · Only .txt and .md are supported right now' : ''}
+                {fileMeta.status === 'unsupported' ? ' · Only .txt, .md, and .pdf are supported right now' : ''}
                 {fileMeta.status === 'error' ? ' · Could not read this file' : ''}
               </p>
             </div>

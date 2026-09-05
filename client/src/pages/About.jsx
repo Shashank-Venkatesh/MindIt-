@@ -92,9 +92,9 @@ export function About() {
         <section>
           <Panel title="Your data">
             <p className="text-sm leading-relaxed text-on-surface-variant">
-              Right now, run history is saved locally in your browser so you can revisit past summaries
-              from the Dashboard. It isn't synced anywhere else yet — account-based storage is on the
-              roadmap as the backend comes online.
+              Log in from the header to save runs to your profile, where you can revisit any previous
+              text or file summary. Everything is currently kept locally in your browser rather than a
+              real account — full backend-backed storage is on the roadmap.
             </p>
           </Panel>
         </section>

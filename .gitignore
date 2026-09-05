@@ -1,3 +1,42 @@
-node_modules
-venv
+# Environment files and local secrets
 .env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+venv/
+.venv/
+env/
+.env/
+
+# JavaScript / Vite
+node_modules/
+client/dist/
+client/.vite/
+*.tsbuildinfo
+
+# Local databases and generated logs
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# Editor and operating-system files
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

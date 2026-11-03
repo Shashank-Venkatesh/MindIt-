@@ -1,68 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Cozette';
+  src: url('/fonts/CozetteVector.ttf') format('truetype');
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'IBM 3270 Semi Condensed';
+  src: url('/fonts/IBM3270SemiCondensed-Regular.ttf') format('truetype');
+  font-display: swap;
+  font-weight: 400;
+  font-style: normal;
+}
+
 @theme {
-  --font-display: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-
-  /* Minimal dark palette */
-  --color-background: #0a0e17;
-  --color-surface: #10141f;
-  --color-surface-alt: #161b28;
-  --color-border: #242938;
-
-  --color-on-surface: #eef0fa;
-  --color-on-surface-variant: #8b91a7;
-
-  --color-primary: #6366f1;
-  --color-primary-hover: #4f46e5;
+  --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
+  --font-cozette: 'Cozette';
+  --color-background: #eef2e8;
+  --color-surface: #fbfcf8;
+  --color-surface-alt: #e7ecdf;
+  --color-border: #d6ddd0;
+  --color-on-surface: #1d2b24;
+  --color-on-surface-variant: #69756b;
+  --color-primary: #365b43;
+  --color-primary-hover: #204638;
   --color-on-primary: #ffffff;
-
-  --color-secondary: #a5b4fc;
-  --color-accent: #22d3ee;
-  --color-tertiary: #fbbf24;
-  --color-danger: #f87171;
+  --color-secondary: #477353;
+  --color-accent: #6c9075;
+  --color-danger: #b94a48;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html {
-  min-height: 100%;
-  background: var(--color-background);
-  color-scheme: dark;
-}
-
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: var(--font-display);
-  color: var(--color-on-surface);
-  background: var(--color-background);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-#root {
-  min-height: 100vh;
-}
-
-::selection {
-  background: color-mix(in srgb, var(--color-primary) 45%, transparent);
-  color: #ffffff;
-}
-
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  line-height: 1;
-}
-
-textarea::placeholder {
-  color: var(--color-on-surface-variant);
-  opacity: 0.6;
-}
-
-* {
-  scrollbar-color: var(--color-border) transparent;
-  scrollbar-width: thin;
-}
+:root{font-family:'DM Sans',sans-serif;color:#1d2b24;background:#eef2e8;font-synthesis:none;--ink:#1d2b24;--muted:#69756b;--line:#d6ddd0;--paper:#fbfcf8;--soft:#e7ecdf;--green:#204638;--sidebar:#0e251c;--sidebar2:#173a2d}
+*{box-sizing:border-box;scrollbar-width:thick;scrollbar-color:#477353 #102d22}*::-webkit-scrollbar{width:10px;height:10px}*::-webkit-scrollbar-track{background:#102d22;border-left:1px solid #1d4434}*::-webkit-scrollbar-thumb{background:#477353;border:2px solid #102d22;border-radius:4px;box-shadow:inset 0 0 0 1px #6c9075}*::-webkit-scrollbar-thumb:hover{background:#6c9075}*::-webkit-scrollbar-corner{background:#102d22}html,body{overflow-x:hidden}body{margin:0;background:#eef2e8;color:var(--ink)}button,input,textarea,select{font-family:inherit}button{cursor:pointer;border:0;background:none;color:inherit}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #6c9075;outline-offset:2px}

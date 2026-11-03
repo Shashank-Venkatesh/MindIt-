@@ -113,10 +113,6 @@ export function Dashboard() {
   const mindMapTopics = buildMindMapModel(result)
   const hasOutput = Boolean(result)
 
-  const pipeline = result?.pipeline || {}
-  const chunkCount = pipeline.chunkCount ?? result?.semantic?.chunks?.length ?? 0
-  const topicCount = pipeline.topicCount ?? result?.topics?.clusters?.length ?? 0
-  const embeddingDimension = pipeline.embeddingDimension ?? result?.embeddings?.dimension ?? 0
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0
 
   const fileBlocksGenerate = inputMode === 'file' && fileMeta && fileMeta.status !== 'ready'
@@ -303,9 +299,6 @@ export function Dashboard() {
           <div className="mx-auto max-w-3xl space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <TabBar options={outputTabs} value={viewMode} onChange={setViewMode} />
-              <p className="text-xs text-on-surface-variant">
-                {pluralizeCount(chunkCount, 'chunk')} · {pluralizeCount(topicCount, 'topic')} · {embeddingDimension || '—'} dims
-              </p>
             </div>
 
             {viewMode === 'summary' ? (
@@ -340,7 +333,6 @@ export function Dashboard() {
         <section className="px-4 py-8 sm:px-6">
           <div className="mx-auto max-w-3xl">
             <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border py-12 text-center">
-              <Icon name="auto_awesome" className="text-[22px] text-on-surface-variant" />
               <p className="text-sm font-medium text-on-surface">Nothing generated yet</p>
               <p className="max-w-sm text-sm text-on-surface-variant">
                 Add your notes above and hit Generate to see a summary and mind map here.

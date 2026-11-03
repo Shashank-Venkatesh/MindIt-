@@ -134,21 +134,47 @@ export function buildStudyNotesModel(result) {
 
   return {
     title: 'Study notes',
-    overview: normalizeWhitespace([
-      chunkCount > 0 ? `Built from ${pluralizeCount(chunkCount, 'semantic chunk')}.` : '',
-      topicCount > 0 ? `Grouped into ${pluralizeCount(topicCount, 'topic cluster')}.` : '',
-      'Written as one page so the main ideas can be reviewed without going back to the pasted source.',
-    ].filter(Boolean).join(' ')),
+    overview: 'Written as one page so the main ideas can be reviewed without going back to the pasted source.',
     sections,
   }
 }
 
 export function buildMindMapModel(result) {
+  const mindMap = result?.mindMap
+
+  if (mindMap?.nodes?.length && mindMap?.edges?.length) {
+    return {
+      nodes: mindMap.nodes.map((label, index) => ({
+        id: label,
+        label,
+        index,
+      })),
+      edges: mindMap.edges.map((edge, index) => ({
+        id: edge.id || `edge-${index}`,
+        source: edge.subject,
+        target: edge.object,
+        label: edge.predicate,
+      })),
+      source: 'extractors',
+    }
+  }
+
   const clusters = result?.topics?.clusters || []
 
-  return clusters.map((cluster, index) => ({
+  const nodes = clusters.map((cluster, index) => ({
     id: cluster.id || `topic-${index}`,
     label: cluster.label || `Topic ${index + 1}`,
     keywords: (cluster.keywords || []).slice(0, 3),
   }))
+
+  return {
+    nodes,
+    edges: nodes.slice(1).map((node, index) => ({
+      id: `topic-edge-${index}`,
+      source: nodes[0]?.id,
+      target: node.id,
+      label: 'related to',
+    })),
+    source: 'topics',
+  }
 }

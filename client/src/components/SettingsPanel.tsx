@@ -1,0 +1,25 @@
+import { useMemo, useState } from 'react'
+import { ChevronDown, RotateCcw, Settings2 } from 'lucide-react'
+import { useGraphStore } from '@/store/useGraphStore'
+import { Graph } from '@/types/graph'
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true)
+  return <section className="border-b border-neutral-800 py-3 last:border-0"><button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between text-xs font-medium uppercase tracking-wider text-neutral-500"><span>{title}</span><ChevronDown size={14} className={open ? '' : '-rotate-90'} /></button>{open && <div className="mt-3 space-y-3">{children}</div>}</section>
+}
+
+function Slider({ label, value, min, max, step, onChange }: { label: string; value: number; min: number; max: number; step: number; onChange: (value: number) => void }) {
+  return <label className="block text-xs text-neutral-500"><span className="mb-1 flex justify-between"><span>{label}</span><span className="text-neutral-400">{value}</span></span><input type="range" min={min} max={max} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full accent-neutral-300" /></label>
+}
+
+export function SettingsPanel({ graph, onClose }: { graph: Graph; onClose: () => void }) {
+  const [text, setText] = useState('')
+  const groups = useMemo(() => [...new Set(graph.nodes.map((node) => node.group))], [graph])
+  const store = useGraphStore()
+  return <aside className="absolute right-3 top-14 z-30 max-h-[calc(100vh-5rem)] w-72 overflow-auto rounded-lg border border-neutral-800 bg-neutral-900/95 p-4 shadow-2xl backdrop-blur"><div className="mb-2 flex items-center justify-between"><p className="flex items-center gap-2 font-medium text-neutral-200"><Settings2 size={16} /> Settings</p><button onClick={onClose} className="text-xs text-neutral-500 hover:text-neutral-100">Close</button></div>
+    <Section title="Filters"><label className="block text-xs text-neutral-500">Text filter<input value={text} onChange={(event) => { setText(event.target.value); store.setSearch(event.target.value) }} className="mt-1 w-full rounded border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-neutral-200 outline-none" /></label><Slider label="Minimum links" value={store.minLinks} min={0} max={8} step={1} onChange={(value) => store.setSetting('minLinks', value)} /><label className="flex items-center gap-2 text-xs text-neutral-400"><input type="checkbox" checked={store.showOrphans} onChange={(event) => store.setSetting('showOrphans', event.target.checked)} /> Show orphan nodes</label><label className="flex items-center gap-2 text-xs text-neutral-400"><input type="checkbox" checked={store.showLabels} onChange={(event) => store.setSetting('showLabels', event.target.checked)} /> Show link labels</label></Section>
+    <Section title="Groups">{groups.map((group) => <label key={group} className="flex items-center gap-2 text-xs text-neutral-400"><input type="checkbox" checked={store.groups[group] !== false} onChange={(event) => store.setGroup(group, event.target.checked)} /><span className="flex-1">{group}</span><input type="color" value={store.groupColors[group] || '#9b9bb8'} onChange={(event) => store.setGroupColor(group, event.target.value)} className="h-5 w-5 border-0 bg-transparent" /></label>)}</Section>
+    <Section title="Display"><Slider label="Node size" value={store.nodeScale} min={0.5} max={2} step={0.1} onChange={(value) => store.setSetting('nodeScale', value)} /><Slider label="Link thickness" value={store.linkWidth} min={0.5} max={3} step={0.5} onChange={(value) => store.setSetting('linkWidth', value)} /><Slider label="Text fade threshold" value={store.fadeThreshold} min={0.3} max={2} step={0.1} onChange={(value) => store.setSetting('fadeThreshold', value)} /><label className="flex items-center gap-2 text-xs text-neutral-400"><input type="checkbox" checked={store.colorByGroup} onChange={(event) => store.setSetting('colorByGroup', event.target.checked)} /> Color by group</label><label className="flex items-center gap-2 text-xs text-neutral-400"><input type="checkbox" checked={store.animate} onChange={(event) => store.setSetting('animate', event.target.checked)} /> Animate physics</label></Section>
+    <Section title="Forces"><Slider label="Center strength" value={store.forces.center} min={0} max={0.3} step={0.01} onChange={(value) => store.setForces({ center: value })} /><Slider label="Repel strength" value={store.forces.repel} min={-300} max={-20} step={10} onChange={(value) => store.setForces({ repel: value })} /><Slider label="Link strength" value={store.forces.link} min={0.1} max={1} step={0.05} onChange={(value) => store.setForces({ link: value })} /><Slider label="Link distance" value={store.forces.distance} min={30} max={160} step={5} onChange={(value) => store.setForces({ distance: value })} /><button onClick={store.resetForces} className="flex items-center gap-2 text-xs text-neutral-500 hover:text-neutral-200"><RotateCcw size={13} /> Reset defaults</button></Section>
+  </aside>
+}
